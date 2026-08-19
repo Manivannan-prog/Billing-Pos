@@ -1,0 +1,43 @@
+@import "tailwindcss";
+
+@media print {
+  @page {
+    size: 80mm auto;
+    margin: 0;
+  }
+
+  html,
+  body {
+    width: 80mm;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  .print-receipt,
+  .print-receipt * {
+    visibility: visible;
+  }
+
+  .print-receipt {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 80mm !important;
+    max-width: 80mm !important;
+    margin: 0 !important;
+    padding: 5mm 4mm !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    box-sizing: border-box;
+  }
+
+  .print-hidden {
+    display: none !important;
+  }
+}
