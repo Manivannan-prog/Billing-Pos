@@ -6,7 +6,7 @@ The POS prints receipts through the included local Windows printer bridge, not t
 npm run printer-bridge
 ```
 
-It binds only to `127.0.0.1:9101`, targets the Windows printer named `RETSOL RTP-81`, sends raw ESC/POS commands, then issues a three-line feed and partial-cut command. Do not use browser print for sales.
+It binds only to `127.0.0.1:9101`, targets the Windows printer named `RETSOL RTP-81`, sends raw ESC/POS commands, then issues a three-line feed and partial-cut command. It accepts print calls from localhost and HTTPS Vercel deployments, so the website can be hosted while printing remains on the POS computer. Do not use browser print for sales.
 
 # React + Vite
 

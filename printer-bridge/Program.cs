@@ -8,7 +8,8 @@ const string printerName = "RETSOL RTP-81";
 var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.UseUrls("http://127.0.0.1:9101");
 builder.Services.AddCors(options => options.AddDefaultPolicy(policy => policy
-    .SetIsOriginAllowed(origin => Uri.TryCreate(origin, UriKind.Absolute, out var uri) && uri.IsLoopback)
+    .SetIsOriginAllowed(origin => Uri.TryCreate(origin, UriKind.Absolute, out var uri) &&
+        (uri.IsLoopback || (uri.Scheme == Uri.UriSchemeHttps && uri.Host.EndsWith(".vercel.app", StringComparison.OrdinalIgnoreCase))))
     .AllowAnyHeader()
     .AllowAnyMethod()));
 var app = builder.Build();
