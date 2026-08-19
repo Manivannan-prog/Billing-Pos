@@ -27,3 +27,4 @@ dist-ssr
 # .NET build outputs
 **/bin/
 **/obj/
+printer-bridge/publish/
