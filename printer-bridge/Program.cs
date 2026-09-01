@@ -25,7 +25,7 @@ app.MapPost("/print", (Receipt receipt) =>
 
     try
     {
-        if (printedSales.ContainsKey(receipt.SaleId))
+        if (!receipt.Reprint && printedSales.ContainsKey(receipt.SaleId))
             return Results.Ok(new { printed = true, duplicate = true, receipt.SaleId, printer = printerName });
 
         RawPrinter.Send(printerName, ReceiptCommands.Build(receipt));
@@ -40,8 +40,9 @@ app.MapPost("/print", (Receipt receipt) =>
 
 app.Run();
 
-record Receipt(string SaleId, string ShopName, string BillNumber, string PaymentMode, decimal Subtotal,
-    decimal GstAmount, decimal DiscountAmount, decimal GrandTotal, List<ReceiptItem> Items);
+record Receipt(string SaleId, string ShopName, string ShopAddress, string ShopPhone, string GstNumber, string BillNumber, string PaymentMode, decimal Subtotal,
+    decimal GstAmount, decimal DiscountAmount, decimal GrandTotal, List<ReceiptItem> Items, DateTimeOffset? BillDate,
+    bool Reprint);
 record ReceiptItem(string Name, decimal Price, int Quantity);
 
 static class ReceiptCommands
@@ -59,18 +60,18 @@ static class ReceiptCommands
         string Fit(string value, int width) => value.Length <= width ? value : value[..Math.Max(0, width - 1)] + "~";
 
         Bytes(0x1B, 0x40); // ESC @: initialise printer
-        Bytes(0x1B, 0x74, 0x00); // ESC t 0: PC437; money is rendered as Rs. for reliable printer output
+        Bytes(0x1B, 0x74, 0x00); // ESC t 0: PC437 for reliable ASCII output
         Bytes(0x1B, 0x61, 0x01); // centre
         Bytes(0x1B, 0x45, 0x01); // bold
         Center(receipt.ShopName);
         Bytes(0x1B, 0x45, 0x00);
-        Center("Indian Oil Petrol Bunk, Ullagaram");
-        Center("Madipakkam, Chennai - 91");
-        Center("Ph: 637463203 / 7358251270");
-        Center("We undertake party orders");
+        foreach (var addressLine in (receipt.ShopAddress ?? "").Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)) Center(addressLine.Trim());
+        if (!string.IsNullOrWhiteSpace(receipt.ShopPhone)) Center($"Ph: {receipt.ShopPhone}");
+        if (!string.IsNullOrWhiteSpace(receipt.GstNumber)) Center($"GSTIN: {receipt.GstNumber}");
         Bytes(0x1B, 0x61, 0x00); // left
         Rule();
         Text($"Bill: {receipt.BillNumber}");
+        if (receipt.BillDate is not null) Text($"Date: {receipt.BillDate.Value.LocalDateTime:dd-MM-yyyy hh:mm tt}");
         Text($"Payment: {receipt.PaymentMode}");
         Rule();
         Text("Item                       Qty    Amount");
@@ -83,8 +84,6 @@ static class ReceiptCommands
         }
         Rule();
         Text($"Subtotal{Money(receipt.Subtotal),Columns - 8}");
-        if (receipt.GstAmount != 0) Text($"GST{Money(receipt.GstAmount),Columns - 3}");
-        if (receipt.DiscountAmount != 0) Text($"Discount -{Money(receipt.DiscountAmount),Columns - 10}");
         Bytes(0x1B, 0x45, 0x01);
         Text($"TOTAL{Money(receipt.GrandTotal),Columns - 5}");
         Bytes(0x1B, 0x45, 0x00);

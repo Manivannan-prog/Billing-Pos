@@ -1,6 +1,6 @@
 import { NavLink } from "react-router-dom";
 
-function Sidebar() {
+function Sidebar({ onNavigate }) {
   const menuItems = [
     { name: "Home", path: "/" },
     { name: "Dashboard", path: "/dashboard" },
@@ -24,6 +24,7 @@ function Sidebar() {
           <NavLink
             key={item.path}
             to={item.path}
+            onClick={onNavigate}
             className={({ isActive }) =>
               `block p-3 rounded-lg mb-2 transition ${
                 isActive

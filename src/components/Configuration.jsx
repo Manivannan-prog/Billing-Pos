@@ -5,6 +5,7 @@ import {
     getMenuItems,
     saveMenuItems,
 } from "../utils/storage";
+import { formatCurrency } from "../utils/billHelper";
 
 
 function Configuration() {
@@ -349,7 +350,7 @@ const handleLogoUpload = (event) => {
                                 <div className="flex items-center gap-3">
 
                                     <div className="font-bold text-green-600">
-                                        ₹{item.price}
+                                        {formatCurrency(item.price)}
                                     </div>
                                     <button
                                         onClick={() => handleEditItem(item)}

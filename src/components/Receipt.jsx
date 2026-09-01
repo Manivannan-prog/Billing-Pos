@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useLocation } from "react-router-dom";
 import { getSelectedBill, getSettings } from "../utils/storage";
 import { printThermalReceipt, printerBridgeError } from "../utils/receiptPrinter";
+import { formatCurrency } from "../utils/billHelper";
 
 function Receipt() {
     const bill = getSelectedBill();
@@ -15,7 +16,7 @@ function Receipt() {
         setPrinting(true);
         setPrintError("");
         try {
-            await printThermalReceipt(bill, settings);
+            await printThermalReceipt(bill, settings, true);
         } catch (error) {
             setPrintError(printerBridgeError(error));
         } finally {
@@ -48,20 +49,22 @@ function Receipt() {
                 <div className="text-center border-b pb-4 mb-4">
                     <h1 className="text-2xl font-bold">{settings.shopName}</h1>
                     <p className="text-sm mt-2 leading-5">
-                        Indian Oil Petrol Bunk, Ullagaram, Madipakkam,
-                        <br />
-                        Near Vasanth & Co, Medavakkam Main Road, Ch - 91
+                        {settings.address || "Address not configured"}
                     </p>
-                    <p className="text-sm mt-1">Ph: 637463203 / 7358251270</p>
-                    <p className="text-sm font-semibold mt-2">
-                        We undertake party orders
-                    </p>
+                    {settings.phone && <p className="text-sm mt-1">Ph: {settings.phone}</p>}
+                    {settings.gstNumber && <p className="text-sm mt-1">GSTIN: {settings.gstNumber}</p>}
                 </div>
 
                 <div className="space-y-2 text-sm">
                     <div>
                         <span className="font-semibold">Bill Number:</span>{" "}
                         {bill.billNumber}
+                    </div>
+                    <div>
+                        <span className="font-semibold">Bill Date:</span>{" "}
+                        {bill.createdDate
+                            ? new Date(bill.createdDate).toLocaleString()
+                            : bill.saleDate}
                     </div>
                     <div>
                         <span className="font-semibold">Payment Mode:</span>{" "}
@@ -80,14 +83,14 @@ function Receipt() {
                             </tr>
                         </thead>
                         <tbody>
-                            {bill.items.map((item) => (
-                                <tr key={item.id} className="border-t">
+                            {(bill.items || []).map((item, index) => (
+                                <tr key={`${item.id || item.name}-${index}`} className="border-t">
                                     <td className="p-2 border">{item.name}</td>
                                     <td className="text-center p-2 border">
                                         {item.quantity}
                                     </td>
                                     <td className="text-right p-2 border">
-                                        ₹{(item.price * item.quantity).toFixed(2)}
+                                        {formatCurrency(item.price * item.quantity)}
                                     </td>
                                 </tr>
                             ))}
@@ -97,11 +100,11 @@ function Receipt() {
                     <div className="mt-4 border-t pt-3 space-y-2 text-sm">
                         <div className="flex justify-between">
                             <span>Subtotal</span>
-                            <span>₹{Number(bill.subtotal).toFixed(2)}</span>
+                            <span>{formatCurrency(bill.subtotal)}</span>
                         </div>
                         <div className="border-t pt-3 mt-2 flex justify-between text-xl font-bold">
                             <span>Total</span>
-                            <span>₹{Number(bill.grandTotal).toFixed(2)}</span>
+                            <span>{formatCurrency(bill.grandTotal)}</span>
                         </div>
                     </div>
 
