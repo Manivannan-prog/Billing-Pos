@@ -12,7 +12,7 @@ export const printThermalReceipt = async (bill, _settings, reprint = false) => {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       saleId: `${bill.billNumber}-${bill.createdDate}`,
-      shopName: settings.shopName || "Biriyani Billing Software",
+      shopName: settings.shopName || "",
       shopAddress: settings.address || "",
       shopPhone: settings.phone || "",
       gstNumber: settings.gstNumber || "",

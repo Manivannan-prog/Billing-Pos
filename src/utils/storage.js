@@ -3,7 +3,7 @@ import { defaultMenu } from "../data/defaultMenu";
 const SETTINGS_KEY = "billing_settings";
 
 export const defaultSettings = {
-  shopName: "Biriyani Billing Software",
+  shopName: "",
   address: "",
   phone: "",
   gstNumber: "",
