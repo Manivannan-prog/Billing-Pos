@@ -34,8 +34,9 @@ function Configuration() {
         });
     };
 
-    const handleSave = () => {
+const handleSave = () => {
     saveSettings(settings);
+    window.dispatchEvent(new Event("billing-settings-updated"));
     alert("Settings Saved Successfully");
 };
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { getSelectedBill, getSettings } from "../utils/storage";
 import { printThermalReceipt, printerBridgeError } from "../utils/receiptPrinter";
@@ -6,10 +6,24 @@ import { formatCurrency } from "../utils/billHelper";
 
 function Receipt() {
     const bill = getSelectedBill();
-    const settings = getSettings();
+    const [settings, setSettings] = useState(getSettings);
     const location = useLocation();
     const [printing, setPrinting] = useState(false);
     const [printError, setPrintError] = useState(location.state?.printError || "");
+
+    useEffect(() => {
+        const refreshSettings = () => setSettings(getSettings());
+
+        window.addEventListener("focus", refreshSettings);
+        window.addEventListener("storage", refreshSettings);
+        window.addEventListener("billing-settings-updated", refreshSettings);
+
+        return () => {
+            window.removeEventListener("focus", refreshSettings);
+            window.removeEventListener("storage", refreshSettings);
+            window.removeEventListener("billing-settings-updated", refreshSettings);
+        };
+    }, []);
 
     const retryPrint = async () => {
         if (!bill || printing) return;
