@@ -1,6 +1,12 @@
+import { getSettings } from "./storage";
+
 const PRINTER_BRIDGE_URL = "http://127.0.0.1:9101";
 
-export const printThermalReceipt = async (bill, settings, reprint = false) => {
+export const printThermalReceipt = async (bill, _settings, reprint = false) => {
+  // Always read the saved configuration at print time. This keeps new prints and
+  // reprints in sync with Configuration even when the current page was opened earlier.
+  const settings = getSettings();
+
   const response = await fetch(`${PRINTER_BRIDGE_URL}/print`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
