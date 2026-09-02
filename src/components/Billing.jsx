@@ -9,6 +9,8 @@ import {
   getCurrentSession,
   applyBillingItemOrder,
   saveBillingItemOrder,
+  getFavoriteBillingItemIds,
+  saveFavoriteBillingItemIds,
   saveSale,
   updateSale,
   saveSelectedBill,
@@ -50,9 +52,10 @@ function Billing() {
   const [isOrderEditing, setIsOrderEditing] = useState(false);
   const [orderedMenuItems, setOrderedMenuItems] = useState(initialMenuItems);
   const [draggedItemId, setDraggedItemId] = useState(null);
+  const [favoriteItemIds, setFavoriteItemIds] = useState(getFavoriteBillingItemIds);
 
   const categories = useMemo(
-    () => ["All", ...new Set(orderedMenuItems.map((item) => item.category).filter(Boolean))],
+    () => ["All", "Favorites", ...new Set(orderedMenuItems.map((item) => item.category).filter(Boolean))],
     [orderedMenuItems]
   );
 
@@ -61,7 +64,10 @@ function Billing() {
       .toLowerCase()
       .includes(searchTerm.trim().toLowerCase());
     const matchesCategory =
-      selectedCategory === "All" || item.category === selectedCategory;
+      selectedCategory === "All" ||
+      (selectedCategory === "Favorites"
+        ? favoriteItemIds.includes(String(item.id))
+        : item.category === selectedCategory);
 
     return matchesSearch && matchesCategory;
   });
@@ -82,6 +88,16 @@ function Billing() {
     } else {
       setCart([...cart, { ...item, quantity: 1 }]);
     }
+  };
+
+  const toggleFavorite = (itemId) => {
+    const id = String(itemId);
+    const nextFavoriteItemIds = favoriteItemIds.includes(id)
+      ? favoriteItemIds.filter((favoriteId) => favoriteId !== id)
+      : [...favoriteItemIds, id];
+
+    setFavoriteItemIds(nextFavoriteItemIds);
+    saveFavoriteBillingItemIds(nextFavoriteItemIds);
   };
 
   const increaseQuantity = (id) => {
@@ -193,7 +209,7 @@ function Billing() {
       }
 
       try {
-        await printThermalReceipt(bill, settings, Boolean(editingBill));
+        await printThermalReceipt(bill, getSettings(), Boolean(editingBill));
       } catch (error) {
         setPrintError(printerBridgeError(error));
       }
@@ -276,35 +292,45 @@ function Billing() {
 
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
             {visibleMenuItems.map((item) => (
-              <button
+              <div
                 key={item.id}
                 draggable={isOrderEditing}
                 onDragStart={() => setDraggedItemId(item.id)}
                 onDragOver={(event) => event.preventDefault()}
                 onDrop={() => moveBillingItem(item.id)}
                 onDragEnd={() => setDraggedItemId(null)}
-                onClick={() => addToCart(item)}
-                className={`min-h-28 rounded-xl border bg-white p-4 text-left shadow-sm transition ${
+                className={`relative min-h-28 rounded-xl border bg-white p-4 text-left shadow-sm transition ${
                   isOrderEditing
                     ? "cursor-grab border-amber-300 ring-1 ring-amber-100"
                     : "border-slate-200 hover:border-blue-300 hover:shadow-md"
                 }`}
               >
-                <span className="block text-sm font-bold text-slate-800">
-                  {item.name}
-                </span>
-                <span className="mt-2 block text-xs text-slate-500">
-                  {item.category}
-                </span>
-                <span className="mt-3 block text-base font-bold text-green-600">
-                  {formatCurrency(item.price)}
-                </span>
-                {isOrderEditing && (
-                  <span className="mt-2 block text-xs font-semibold text-amber-600">
-                    Drag to reorder
-                  </span>
-                )}
-              </button>
+                <button
+                  type="button"
+                  aria-label={`${favoriteItemIds.includes(String(item.id)) ? "Remove" : "Add"} ${item.name} from favorites`}
+                  aria-pressed={favoriteItemIds.includes(String(item.id))}
+                  disabled={isOrderEditing}
+                  onClick={() => toggleFavorite(item.id)}
+                  className={`absolute right-2 top-2 rounded-full p-1 text-lg leading-none ${
+                    favoriteItemIds.includes(String(item.id))
+                      ? "text-amber-500"
+                      : "text-slate-300 hover:text-amber-500"
+                  }`}
+                >
+                  {favoriteItemIds.includes(String(item.id)) ? "★" : "☆"}
+                </button>
+                <button
+                  type="button"
+                  disabled={isOrderEditing}
+                  onClick={() => addToCart(item)}
+                  className="block min-h-20 w-full pr-6 text-left"
+                >
+                  <span className="block text-sm font-bold text-slate-800">{item.name}</span>
+                  <span className="mt-2 block text-xs text-slate-500">{item.category}</span>
+                  <span className="mt-3 block text-base font-bold text-green-600">{formatCurrency(item.price)}</span>
+                  {isOrderEditing && <span className="mt-2 block text-xs font-semibold text-amber-600">Drag to reorder</span>}
+                </button>
+              </div>
             ))}
           </div>
         </section>

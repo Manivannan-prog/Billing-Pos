@@ -83,6 +83,7 @@ export const incrementBillNumber = () => {
 
 const MENU_KEY = "menu_items";
 const BILLING_ITEM_ORDER_KEY = "billing_item_order";
+const FAVORITE_BILLING_ITEMS_KEY = "favorite_billing_items";
 
 export const getMenuItems = () => {
   const data = localStorage.getItem(MENU_KEY);
@@ -116,6 +117,22 @@ export const saveBillingItemOrder = (itemIds) => {
   localStorage.setItem(
     BILLING_ITEM_ORDER_KEY,
     JSON.stringify(itemIds)
+  );
+};
+
+export const getFavoriteBillingItemIds = () => {
+  try {
+    const itemIds = JSON.parse(localStorage.getItem(FAVORITE_BILLING_ITEMS_KEY) || "[]");
+    return Array.isArray(itemIds) ? itemIds.map(String) : [];
+  } catch {
+    return [];
+  }
+};
+
+export const saveFavoriteBillingItemIds = (itemIds) => {
+  localStorage.setItem(
+    FAVORITE_BILLING_ITEMS_KEY,
+    JSON.stringify([...new Set(itemIds.map(String))])
   );
 };
 
