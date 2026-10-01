@@ -1,65 +1,90 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
-import Sidebar from "./components/Sidebar";
-import Home from "./components/Home";
-import Dashboard from "./components/Dashboard";
-import Billing from "./components/Billing";
-import Configuration from "./components/Configuration";
-import Header from "./components/Header";
-import Receipt from "./components/Receipt";
-import { syncPendingSales } from "./utils/storage";
+import { AuthProvider, RequireAuth } from "./lib/auth";
+import { ShopProvider } from "./lib/shop";
+import { SyncProvider } from "./lib/sync";
+import AppShell from "./components/layout/AppShell";
+import Billing from "./pages/Billing";
+import Configuration from "./pages/Configuration";
+import Login from "./pages/Login";
+import Overview from "./pages/Overview";
+import Reports from "./pages/Reports";
+import ShopDetail from "./pages/ShopDetail";
+import Users from "./pages/Users";
+
+/** Wraps a page in the shell plus the auth guard and any role restriction. */
+function Protected({ children, adminOnly = false, shopOnly = false }) {
+  return (
+    <RequireAuth adminOnly={adminOnly} shopOnly={shopOnly}>
+      <AppShell>{children}</AppShell>
+    </RequireAuth>
+  );
+}
 
 function App() {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-
-  useEffect(() => {
-    syncPendingSales();
-
-    const handleOnline = () => {
-      syncPendingSales();
-    };
-
-    window.addEventListener("online", handleOnline);
-
-    return () => window.removeEventListener("online", handleOnline);
-  }, []);
-
   return (
     <BrowserRouter>
-      <div className="min-h-screen">
-        <div
-          className={`print-hidden fixed inset-y-0 left-0 z-40 transition-transform ${
-            isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-          }`}
-        >
-          <Sidebar onNavigate={() => setIsSidebarOpen(false)} />
-        </div>
+      <AuthProvider>
+        <SyncProvider>
+          <ShopProvider>
+            <Routes>
+              <Route path="/login" element={<Login />} />
 
-        {isSidebarOpen && (
-          <button
-            aria-label="Close navigation"
-            onClick={() => setIsSidebarOpen(false)}
-            className="print-hidden fixed inset-0 z-30 bg-slate-900/30"
-          />
-        )}
+              <Route
+                path="/"
+                element={
+                  <Protected shopOnly>
+                    <Overview />
+                  </Protected>
+                }
+              />
+              <Route
+                path="/billing"
+                element={
+                  <Protected shopOnly>
+                    <Billing />
+                  </Protected>
+                }
+              />
+              <Route
+                path="/reports"
+                element={
+                  <Protected shopOnly>
+                    <Reports />
+                  </Protected>
+                }
+              />
+              <Route
+                path="/configuration"
+                element={
+                  <Protected shopOnly>
+                    <Configuration />
+                  </Protected>
+                }
+              />
+              <Route
+                path="/users"
+                element={
+                  <Protected adminOnly>
+                    <Users />
+                  </Protected>
+                }
+              />
+              {/* The admin's read-only view of one shop's data. */}
+              <Route
+                path="/shops/:shopId"
+                element={
+                  <Protected adminOnly>
+                    <ShopDetail />
+                  </Protected>
+                }
+              />
 
-        <div className="min-h-screen bg-slate-100">
-  <div className="print-hidden">
-  <Header onMenuClick={() => setIsSidebarOpen((isOpen) => !isOpen)} />
-</div>
-
-  <main className="p-4 md:p-8">
-   <Routes>
-  <Route path="/" element={<Home />} />
-  <Route path="/dashboard" element={<Dashboard />} />
-  <Route path="/billing" element={<Billing />} />
-  <Route path="/configuration" element={<Configuration />} />
-  <Route path="/receipt" element={<Receipt />} />
-</Routes>
-  </main>
-</div>
-      </div>
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </ShopProvider>
+        </SyncProvider>
+      </AuthProvider>
     </BrowserRouter>
   );
 }

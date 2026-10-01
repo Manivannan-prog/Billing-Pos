@@ -28,3 +28,11 @@ dist-ssr
 **/bin/
 **/obj/
 printer-bridge/publish/
+
+# Local secrets
+.env
+.env.local
+
+# Published receipt printer app
+printer-bridge/app/
+printer-bridge/ReceiptPrinter-win-x64.zip

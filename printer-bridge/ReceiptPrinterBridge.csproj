@@ -3,5 +3,33 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <!-- The published file the shop double-clicks is ReceiptPrinter.exe. -->
+    <AssemblyName>ReceiptPrinter</AssemblyName>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <!-- This is not hosted in IIS, so it needs no web.config. -->
+    <IsTransformWebConfigDisabled>true</IsTransformWebConfigDisabled>
   </PropertyGroup>
+
+  <PropertyGroup>
+    <!--
+      The Web SDK treats every file under the project as content, which means a
+      previous publish sitting in this folder gets copied into the next one.
+      Keep output folders and old build artifacts out of the build entirely.
+    -->
+    <DefaultItemExcludes>
+      $(DefaultItemExcludes);
+      app\**;
+      publish\**;
+      download\**;
+      ReceiptPrinterBridge-win-x64\**;
+      *.zip;
+      *.log
+    </DefaultItemExcludes>
+  </PropertyGroup>
+
+  <!--
+    Publishing flags deliberately live in the `build:printer` npm script rather
+    than here: pinning a RuntimeIdentifier in the project file would make every
+    `dotnet run` during development do a slow self-contained build too.
+  -->
 </Project>

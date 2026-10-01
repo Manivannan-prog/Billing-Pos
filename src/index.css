@@ -1,5 +1,83 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap");
 @import "tailwindcss";
 
+/* ---------------------------------------------------------------------------
+   Design tokens. Tailwind v4 turns each --color-* into a utility, so these
+   names are the ones used throughout the JSX: bg-surface, text-text-muted,
+   border-border, and so on.
+--------------------------------------------------------------------------- */
+@theme {
+  --color-primary: #4a6b3a;
+  --color-primary-soft: #7a9866;
+  --color-primary-tint: #eef2e9;
+  --color-accent: #d4a574;
+  --color-accent-tint: #f7ecdd;
+
+  --color-bg: #fafaf7;
+  --color-surface: #ffffff;
+  --color-surface-2: #f5f4ee;
+  --color-border: #e8e6dd;
+
+  --color-text: #1f2421;
+  --color-text-muted: #6b7066;
+
+  --color-success: #3f7d4e;
+  --color-success-tint: #e9f2eb;
+  --color-warning: #b07d34;
+  --color-warning-tint: #f9efdf;
+  --color-danger: #b4453c;
+  --color-danger-tint: #f8e9e7;
+
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Fraunces", "Playfair Display", Georgia, serif;
+
+  --radius-card: 0.875rem;
+
+  --shadow-card: 0 1px 2px 0 rgb(31 36 33 / 0.04), 0 1px 3px 0 rgb(31 36 33 / 0.04);
+  --shadow-pop: 0 10px 15px -3px rgb(31 36 33 / 0.1), 0 4px 6px -4px rgb(31 36 33 / 0.1);
+}
+
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Numbers in tables and totals line up when they share a width. */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+.scrollbar-thin::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 9999px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* --------------------------------------------------------------------------
+   Thermal receipt printing (80mm roll). Used by the browser-print fallback
+   when the local printer bridge is not running.
+-------------------------------------------------------------------------- */
 @media print {
   @page {
     size: 80mm auto;
@@ -35,6 +113,8 @@
     border-radius: 0 !important;
     box-shadow: none !important;
     box-sizing: border-box;
+    color: #000 !important;
+    font-family: ui-monospace, "Courier New", monospace;
   }
 
   .print-hidden {

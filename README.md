@@ -1,26 +1,65 @@
-# POS receipt printing
+# Billing POS
 
-The POS prints receipts through the included local Windows printer bridge, not through the browser. Before using **Complete Sale**, run this once on the POS machine:
+A point-of-sale and billing app for a food shop: touch billing, GST receipts,
+sales reporting, and admin-issued logins. React + Vite + Tailwind on the front,
+Supabase (Postgres) behind it.
 
-```powershell
-npm run printer-bridge
+## Run it
+
+```bash
+npm install
+npm run dev          # http://localhost:5173
+npm run printer-bridge   # on the POS machine only, for silent thermal printing
 ```
 
-It binds only to `127.0.0.1:9101`, targets the Windows printer named `RETSOL RTP-81`, sends raw ESC/POS commands, then issues a three-line feed and partial-cut command. It accepts print calls from localhost and HTTPS Vercel deployments, so the website can be hosted while printing remains on the POS computer. Do not use browser print for sales.
+With no `.env` the app starts in **demo mode** — everything works, data stays in
+the browser. Sign in with `shop` / `shop123` (full POS) or `admin` / `admin123`
+(adds user management).
 
-# React + Vite
+To connect the real backend, follow [SETUP.md](SETUP.md).
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## What it does
 
-Currently, two official plugins are available:
+**Billing** — item tiles with search, category tabs and favourites; drag to
+rearrange the tiles; cart with quantity stepping; customer name and mobile;
+payment mode; collected amount with change due; GST and standing discount
+applied from settings; bill numbers issued from a gapless sequence at the
+moment of sale.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+**Shop logo** — upload it from the left navigation or from Configuration; it
+appears in the side menu and prints on every receipt.
 
-## React Compiler
+**Overview** — today's revenue, items sold, average bill, open session, a
+seven-day revenue chart, payment split and top sellers. Visible to everyone.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+**Sales reports** — date range, payment mode, item and free-text
+filters; daily/weekly/monthly/yearly revenue trend; per-bill detail; reprint;
+edit a past bill; end-of-sale cash-up with the payment breakdown; Excel export
+with three sheets (bills, line items, item summary).
 
-## Expanding the ESLint configuration
+**Configuration** — shop name, address, phone, GSTIN, UPI ID, logo; GST
+and discount rules; full menu CRUD; live printer-bridge status.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+**Users & access** (admin only) — the vendor's screen. Issue a login to a shop
+that has bought the app, set it to admin or shop account, reset passwords,
+disable or delete. No self sign-up. The last active admin cannot be demoted,
+disabled or deleted.
+
+**Roles** — `admin` is the vendor and can do everything. `user` is the shop and
+runs the whole POS: billing, reports, exports, cash-up, prices, menu, settings
+and logo. Only the Administration section is withheld.
+
+## Printing
+
+Receipts prefer the local Windows bridge (raw ESC/POS to `RETSOL RTP-81`, feed
+and partial cut) and fall back to an 80 mm browser print if it is not running,
+so a sale is never blocked. See [SETUP.md](SETUP.md#printing).
+
+## Scripts
+
+| | |
+|---|---|
+| `npm run dev` | dev server |
+| `npm run build` | production build |
+| `npm run lint` | eslint |
+| `npm run printer-bridge` | local thermal printer bridge (.NET 10) |

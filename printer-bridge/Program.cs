@@ -3,10 +3,42 @@ using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
 using System.Text;
 
-const string printerName = "RETSOL RTP-81";
+// The printer can be changed without rebuilding: put its exact Windows name in
+// printer.txt next to the executable. That is what lets one build be handed to
+// any shop, whatever till roll printer they happen to own.
+const string defaultPrinter = "RETSOL RTP-81";
+var printerFile = Path.Combine(AppContext.BaseDirectory, "printer.txt");
+var printerName = defaultPrinter;
+
+if (File.Exists(printerFile))
+{
+    var configured = File.ReadAllLines(printerFile)
+        .Select(line => line.Trim())
+        .FirstOrDefault(line => line.Length > 0 && !line.StartsWith('#'));
+    if (!string.IsNullOrWhiteSpace(configured)) printerName = configured;
+}
+else
+{
+    // Write it out so a freshly published copy is self-documenting and a
+    // rebuild never leaves the shop with no way to change the printer.
+    // Best effort: a read-only install folder is not worth failing over.
+    try
+    {
+        File.WriteAllText(printerFile, string.Join(Environment.NewLine,
+            "# The exact Windows name of the receipt printer.",
+            "# Find it in Settings > Bluetooth & devices > Printers & scanners.",
+            "# Change the line below, save, and restart this app.",
+            defaultPrinter,
+            ""));
+    }
+    catch (Exception) { /* keep the built-in default */ }
+}
 
 var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.UseUrls("http://127.0.0.1:9101");
+// This window is watched by a shopkeeper, not a developer: keep it to the
+// banner below and anything that actually went wrong.
+builder.Logging.ClearProviders();
 builder.Services.AddCors(options => options.AddDefaultPolicy(policy => policy
     .SetIsOriginAllowed(origin => Uri.TryCreate(origin, UriKind.Absolute, out var uri) &&
         (uri.IsLoopback || (uri.Scheme == Uri.UriSchemeHttps && uri.Host.EndsWith(".vercel.app", StringComparison.OrdinalIgnoreCase))))
@@ -38,11 +70,72 @@ app.MapPost("/print", (Receipt receipt) =>
     }
 });
 
-app.Run();
+/* --------------------------------------------------------------- console --
+   What the shopkeeper sees when they double-click the app each morning.
+-------------------------------------------------------------------------- */
 
+Console.Title = "Receipt Printer - Billing POS";
+Console.WriteLine();
+Console.WriteLine("  ============================================");
+Console.WriteLine("    RECEIPT PRINTER");
+Console.WriteLine("  ============================================");
+Console.WriteLine();
+Console.Write("    Printer : ");
+Console.WriteLine(printerName);
+
+if (RawPrinter.Exists(printerName))
+{
+    Console.WriteLine("    Status  : found and ready");
+}
+else
+{
+    Console.WriteLine("    Status  : NOT FOUND");
+    Console.WriteLine();
+    Console.WriteLine("    Windows has no printer with that exact name.");
+    Console.WriteLine("    Check Settings > Bluetooth & devices > Printers,");
+    Console.WriteLine($"    then put the exact name in:");
+    Console.WriteLine($"      {printerFile}");
+    Console.WriteLine("    Billing still works - receipts just will not print.");
+}
+
+Console.WriteLine();
+Console.WriteLine("    Leave this window open while the shop is billing.");
+Console.WriteLine("    Closing it stops receipts printing.");
+Console.WriteLine();
+Console.WriteLine("  --------------------------------------------");
+Console.WriteLine();
+
+try
+{
+    app.Run();
+}
+catch (IOException error) when (error.Message.Contains("address already in use", StringComparison.OrdinalIgnoreCase)
+                             || error.InnerException is not null)
+{
+    Console.WriteLine("  The receipt printer app is ALREADY RUNNING.");
+    Console.WriteLine("  Look for another window like this one - you only need one.");
+    Console.WriteLine();
+    Pause();
+}
+catch (Exception error)
+{
+    Console.WriteLine($"  The receipt printer app stopped: {error.Message}");
+    Console.WriteLine();
+    Pause();
+}
+
+// Without this a double-clicked window vanishes before the error can be read.
+static void Pause()
+{
+    Console.WriteLine("  Press any key to close.");
+    try { Console.ReadKey(true); } catch (InvalidOperationException) { /* no console attached */ }
+}
+
+// The trailing members carry defaults so an older caller that omits them still
+// binds: System.Text.Json matches record parameters by name, not position.
 record Receipt(string SaleId, string ShopName, string ShopAddress, string ShopPhone, string GstNumber, string BillNumber, string PaymentMode, decimal Subtotal,
     decimal GstAmount, decimal DiscountAmount, decimal GrandTotal, List<ReceiptItem> Items, DateTimeOffset? BillDate,
-    bool Reprint);
+    bool Reprint, string? CustomerName = null, string? UpiId = null, decimal CollectedAmount = 0);
 record ReceiptItem(string Name, decimal Price, int Quantity);
 
 static class ReceiptCommands
@@ -70,9 +163,11 @@ static class ReceiptCommands
         if (!string.IsNullOrWhiteSpace(receipt.GstNumber)) Center($"GSTIN: {receipt.GstNumber}");
         Bytes(0x1B, 0x61, 0x00); // left
         Rule();
+        if (receipt.Reprint) { Bytes(0x1B, 0x45, 0x01); Text("*** REPRINT ***"); Bytes(0x1B, 0x45, 0x00); }
         Text($"Bill: {receipt.BillNumber}");
         if (receipt.BillDate is not null) Text($"Date: {receipt.BillDate.Value.LocalDateTime:dd-MM-yyyy hh:mm tt}");
         Text($"Payment: {receipt.PaymentMode}");
+        if (!string.IsNullOrWhiteSpace(receipt.CustomerName)) Text($"Customer: {Fit(receipt.CustomerName, Columns - 10)}");
         Rule();
         Text("Item                       Qty    Amount");
         Rule();
@@ -83,7 +178,15 @@ static class ReceiptCommands
             Text(line);
         }
         Rule();
-        Text($"Subtotal{Money(receipt.Subtotal),Columns - 8}");
+
+        // Subtotal and TOTAL only, by request. GST, discount, collected and
+        // change are still calculated and still stored against the sale - they
+        // are simply not printed on the customer's copy. They remain available
+        // in Sales Reports and the Excel export.
+        // Label on the left, amount flush right against the 42-column edge.
+        void Amount(string label, string value) => Text(label + value.PadLeft(Columns - label.Length));
+
+        Amount("Subtotal", Money(receipt.Subtotal));
         Bytes(0x1B, 0x45, 0x01);
         Text($"TOTAL{Money(receipt.GrandTotal),Columns - 5}");
         Bytes(0x1B, 0x45, 0x00);
@@ -92,6 +195,7 @@ static class ReceiptCommands
         Bytes(0x1B, 0x45, 0x01);
         Center("THANK YOU");
         Bytes(0x1B, 0x45, 0x00);
+        if (!string.IsNullOrWhiteSpace(receipt.UpiId)) Center($"UPI: {receipt.UpiId}");
         Bytes(0x1B, 0x64, 0x03); // ESC d 3: minimum three-line feed for the cutter
         Bytes(0x1D, 0x56, 0x01); // GS V 1: partial cut immediately after feed
         return stream.ToArray();
@@ -110,6 +214,15 @@ static class RawPrinter
     [DllImport("winspool.drv", SetLastError = true)] private static extern bool StartPagePrinter(IntPtr handle);
     [DllImport("winspool.drv", SetLastError = true)] private static extern bool EndPagePrinter(IntPtr handle);
     [DllImport("winspool.drv", SetLastError = true)] private static extern bool WritePrinter(IntPtr handle, byte[] bytes, int count, out int written);
+
+    /** Can Windows see a printer by this exact name? Opens and closes it, nothing more. */
+    public static bool Exists(string printer)
+    {
+        if (string.IsNullOrWhiteSpace(printer)) return false;
+        if (!OpenPrinter(printer, out var handle, IntPtr.Zero)) return false;
+        ClosePrinter(handle);
+        return true;
+    }
 
     public static void Send(string printer, byte[] bytes)
     {
